@@ -27,6 +27,7 @@ unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE (50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
+int ledState = false;
 
 void mqtt_callback(char* topic, byte* payload, unsigned int length);
 void reconnect();
@@ -289,12 +290,66 @@ uint64_t samsungPSize = 0xE0E07C83;
 uint64_t samsungEManual = 0xE0E0FC03;
 uint64_t samsungPIP = 0xE0E004FB;
 uint64_t samsungCC = 0xE0E0A45B;
-uint64_t samsungBackward = 0xE0E0A25D;
+uint64_t samsungRewind = 0xE0E0A25D;
 uint64_t samsungForward = 0xE0E012ED;
 uint64_t samsungPause = 0xE0E052AD;
 uint64_t samsungPlay = 0xE0E0E21D;
 uint64_t samsungRecord = 0xE0E0926D;
 uint64_t samsungStop = 0xE0E0629D;
+
+uint64_t atvioPower = 0xFDC03F;
+uint64_t atvioTV = 0xFDE01F;
+uint64_t atvioSource = 0xFD7887;
+uint64_t atvio1 = 0xFD00FF;
+uint64_t atvio2 = 0xFD807F;
+uint64_t atvio3 = 0xFD40BF;
+uint64_t atvio4 = 0xFD20DF;
+uint64_t atvio5 = 0xFDA05F;
+uint64_t atvio6 = 0xFD609F;
+uint64_t atvio7 = 0xFD10EF;
+uint64_t atvio8 = 0xFD906F;
+uint64_t atvio9 = 0xFD50AF;
+uint64_t atvio0 = 0xFDB04F;
+uint64_t atvioDot = 0xFD30CF;
+uint64_t atvioYoutube = 0xFDBA45;
+uint64_t atvioVolPlus = 0xFD6897;
+uint64_t atvioVolLess = 0xFD58A7;
+uint64_t atvioChPlus = 0xFD28D7;
+uint64_t atvioChLess = 0xFD18E7;
+uint64_t atvioMute = 0xFDA857;
+uint64_t atvioHome = 0xFDE21D;
+uint64_t atvioNetflix = 0xFDC23D;
+uint64_t atvioBrowser = 0xFD3AC5;
+uint64_t atvioSettings = 0xFD38C7;
+uint64_t atvioUp = 0xFDB847;
+uint64_t atvioDown = 0xFDA25D;
+uint64_t atvioLeft = 0xFD02FD;
+uint64_t atvioRight = 0xFD42BD;
+uint64_t atvioOk = 0xFD827D;
+uint64_t atvioBack = 0xFD708F;
+uint64_t atvioExit = 0xFD22DD;
+uint64_t atvioInfo = 0xFD629D;
+uint64_t atvioUSB = 0xFD6A95;
+uint64_t atvioMenu = 0xFDE817;
+uint64_t atvioSleep = 0xFD9867;
+uint64_t atvioGuide = 0xFD9A65;
+uint64_t atvioFav = 0xFD1AE5;
+uint64_t atvioChList = 0xFDEA15;
+uint64_t atvioRed = 0xFD12ED;
+uint64_t atvioGreen = 0xFD926D;
+uint64_t atvioYellow = 0xFD52AD;
+uint64_t atvioBlue = 0xFD32CD;
+uint64_t atvioPicture = 0xFD08F7;
+uint64_t atvioSound = 0xFD8877;
+uint64_t atvioCC = 0xFDAA55;
+uint64_t atvioPrevious = 0xFD0AF5;
+uint64_t atvioStop = 0xFDCA35;
+uint64_t atvioPlayPause = 0xFD4AB5;
+uint64_t atvioNext = 0xFD8A75;
+uint64_t atvioRewind = 0xFDB24D;
+uint64_t atvioForward = 0xFD728D;
+uint64_t atvioMTS = 0xFDC837;
+
 
 void setup() {
   // Configuración de puerto serial
@@ -302,7 +357,11 @@ void setup() {
 
   // Configuración de led para visualización
   pinMode(LED_BUILTIN, OUTPUT);
-
+  
+  Serial.println();
+  Serial.print("Led builtin ");
+  Serial.println(LED_BUILTIN);
+  
   // Configuración de tarjeta como estación y conexión a la red
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
@@ -318,7 +377,7 @@ void setup() {
   stationDisconnectedHandler = WiFi.onStationModeDisconnected(&onStationDisconnected);
 
   // Handlers para OTA
-  ArduinoOTA.setHostname("IRBlasterTest");
+  ArduinoOTA.setHostname("IRBlasterSala");
   ArduinoOTA.onStart([]() {
     String type;
     if (ArduinoOTA.getCommand() == U_FLASH) {
@@ -376,13 +435,13 @@ void loop() {
     snprintf(msg, MSG_BUFFER_SIZE, "Connected to Main IRBlaster #%ld", value);
     // Serial.print("Publish message: ");
     // Serial.println(msg);
-    client.publish("remotecontrol/devices", msg);
+    client.publish("rc/devices", msg);
+    
+    ledState = !ledState;
+    digitalWrite(LED_BUILTIN, ledState);
   }
 
-  digitalWrite(LED_BUILTIN, LOW);
-  delay(1000);
-  digitalWrite(LED_BUILTIN, HIGH);
-  delay(1000);
+  
 }
 
 void onStationConnected(const WiFiEventStationModeConnected& evt) {
@@ -404,8 +463,11 @@ void onStationDisconnected(const WiFiEventStationModeDisconnected& evt) {
 
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   String payload_string = String((char *) payload).substring(0, length);
+  Serial.print(String(topic));
+  Serial.print(" ");
+  Serial.println(payload_string);
 
-  if (String(topic).equals("remotecontrol/tv")) {
+  if (String(topic).equals("rc/samsung")) {
     if (payload_string.equals("power")) {
       irsend.sendSAMSUNG(samsungPower);
     } else if (payload_string.equals("source")) {
@@ -492,8 +554,8 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       irsend.sendSAMSUNG(samsungPIP);
     } else if (payload_string.equals("cc")) {
       irsend.sendSAMSUNG(samsungCC);
-    } else if (payload_string.equals("backward")) {
-      irsend.sendSAMSUNG(samsungBackward);
+    } else if (payload_string.equals("rewind")) {
+      irsend.sendSAMSUNG(samsungRewind);
     } else if (payload_string.equals("forward")) {
       irsend.sendSAMSUNG(samsungForward);
     } else if (payload_string.equals("pause")) {
@@ -505,7 +567,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     } else if (payload_string.equals("stop")) {
       irsend.sendSAMSUNG(samsungStop);
     }
-  } else if (String(topic).equals("remotecontrol/dish")) {
+  } else if (String(topic).equals("rc/dish")) {
     if (payload_string.equals("power")) {
       irsend.sendPronto(dishPower, 26, 4);
     } else if (payload_string.equals("1")) {
@@ -567,6 +629,112 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     } else if (payload_string.equals("sysinfo")) {
       irsend.sendPronto(dishSysInfo, 26, 4);
     }
+  } else if (String(topic).equals("rc/atvio")) {
+    if (payload_string.equals("power")) {
+      irsend.sendNEC(atvioPower);
+    } else if (payload_string.equals("tv")) {
+      irsend.sendNEC(atvioTV);
+    } else if (payload_string.equals("source")) {
+      irsend.sendNEC(atvioSource);
+    } else if (payload_string.equals("1")) {
+      irsend.sendNEC(atvio1);
+    } else if (payload_string.equals("2")) {
+      irsend.sendNEC(atvio2);
+    } else if (payload_string.equals("3")) {
+      irsend.sendNEC(atvio3);
+    } else if (payload_string.equals("4")) {
+      irsend.sendNEC(atvio4);
+    } else if (payload_string.equals("5")) {
+      irsend.sendNEC(atvio5);
+    } else if (payload_string.equals("6")) {
+      irsend.sendNEC(atvio6);
+    } else if (payload_string.equals("7")) {
+      irsend.sendNEC(atvio7);
+    } else if (payload_string.equals("8")) {
+      irsend.sendNEC(atvio8);
+    } else if (payload_string.equals("9")) {
+      irsend.sendNEC(atvio9);
+    } else if (payload_string.equals("0")) {
+      irsend.sendNEC(atvio0);
+    } else if (payload_string.equals(".")) {
+      irsend.sendNEC(atvioDot);
+    } else if (payload_string.equals("youtube")) {
+      irsend.sendNEC(atvioYoutube);
+    } else if (payload_string.equals("vol+")) {
+      irsend.sendNEC(atvioVolPlus);
+    } else if (payload_string.equals("vol-")) {
+      irsend.sendNEC(atvioVolLess);
+    } else if (payload_string.equals("ch+")) {
+      irsend.sendNEC(atvioChPlus);
+    } else if (payload_string.equals("ch-")) {
+      irsend.sendNEC(atvioChLess);
+    } else if (payload_string.equals("mute")) {
+      irsend.sendNEC(atvioMute);
+    } else if (payload_string.equals("home")) {
+      irsend.sendNEC(atvioHome);
+    } else if (payload_string.equals("netflix")) {
+      irsend.sendNEC(atvioNetflix);
+    } else if (payload_string.equals("browser")) {
+      irsend.sendNEC(atvioBrowser);
+    } else if (payload_string.equals("settings")) {
+      irsend.sendNEC(atvioSettings);
+    } else if (payload_string.equals("up")) {
+      irsend.sendNEC(atvioUp);
+    } else if (payload_string.equals("down")) {
+      irsend.sendNEC(atvioDown);
+    } else if (payload_string.equals("left")) {
+      irsend.sendNEC(atvioLeft);
+    } else if (payload_string.equals("right")) {
+      irsend.sendNEC(atvioRight);
+    } else if (payload_string.equals("ok")) {
+      irsend.sendNEC(atvioOk);
+    } else if (payload_string.equals("back")) {
+      irsend.sendNEC(atvioBack);
+    } else if (payload_string.equals("exit")) {
+      irsend.sendNEC(atvioExit);
+    } else if (payload_string.equals("info")) {
+      irsend.sendNEC(atvioInfo);
+    } else if (payload_string.equals("usb")) {
+      irsend.sendNEC(atvioUSB);
+    } else if (payload_string.equals("menu")) {
+      irsend.sendNEC(atvioMenu);
+    } else if (payload_string.equals("sleep")) {
+      irsend.sendNEC(atvioSleep);
+    } else if (payload_string.equals("guide")) {
+      irsend.sendNEC(atvioGuide);
+    } else if (payload_string.equals("fav")) {
+      irsend.sendNEC(atvioFav);
+    } else if (payload_string.equals("chlist")) {
+      irsend.sendNEC(atvioChList);
+    } else if (payload_string.equals("red")) {
+      irsend.sendNEC(atvioRed);
+    } else if (payload_string.equals("green")) {
+      irsend.sendNEC(atvioGreen);
+    } else if (payload_string.equals("yellow")) {
+      irsend.sendNEC(atvioYellow);
+    } else if (payload_string.equals("blue")) {
+      irsend.sendNEC(atvioBlue);
+    } else if (payload_string.equals("picture")) {
+      irsend.sendNEC(atvioPicture);
+    } else if (payload_string.equals("sound")) {
+      irsend.sendNEC(atvioSound);
+    } else if (payload_string.equals("cc")) {
+      irsend.sendNEC(atvioCC);
+    } else if (payload_string.equals("previous")) {
+      irsend.sendNEC(atvioPrevious);
+    } else if (payload_string.equals("stop")) {
+      irsend.sendNEC(atvioStop);
+    } else if (payload_string.equals("play/pause")) {
+      irsend.sendNEC(atvioPlayPause);
+    } else if (payload_string.equals("next")) {
+      irsend.sendNEC(atvioNext);
+    } else if (payload_string.equals("rewind")) {
+      irsend.sendNEC(atvioRewind);
+    } else if (payload_string.equals("forward")) {
+      irsend.sendNEC(atvioForward);
+    } else if (payload_string.equals("mts")) {
+      irsend.sendNEC(atvioMTS);
+    }
   }
 }
 
@@ -577,8 +745,9 @@ void reconnect() {
     clientId += String(random(0xffff), HEX);
     if (client.connect(clientId.c_str())) {
       Serial.println("Connected");
-      client.subscribe("remotecontrol/tv");
-      client.subscribe("remotecontrol/dish");
+      client.subscribe("rc/samsung");
+      client.subscribe("rc/dish");
+      client.subscribe("rc/atvio");
     } else {
       Serial.print("Failed, rc=");
       Serial.print(client.state());
